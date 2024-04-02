@@ -61,14 +61,22 @@
   "Searching in Zeal for text at point"
   :group 'external)
 
+(defun zeal-find-executable (&optional zeal)
+  (let ((zeal-app "/Applications/Zeal.app/Contents/MacOS/Zeal")
+	(zeal (if zeal zeal "zeal")))
+    (if (file-exists-p zeal-app)
+	zeal-app
+      (executable-find zeal))))
+
 (defvar zeal-at-point-zeal-version
-  (when (executable-find "zeal")
-    (let ((output (with-temp-buffer
-                    (call-process "zeal" nil t nil "--version")
-                    (buffer-string))))
-      (when (string-match "Zeal \\([[:digit:]\\.]+\\)" output)
-        (match-string 1 output))))
-  "The version of zeal installed on the system.")
+  (let ((zeal-executable (zeal-find-executable)))
+    (if zeal-executable
+      (let ((output (with-temp-buffer
+                      (call-process zeal-executable nil t nil "--version")
+                      (buffer-string))))
+	(when (string-match "Zeal \\([[:digit:]\\.]+\\)" output)
+          (match-string 1 output)))
+      "The version of zeal installed on the system.")))
 
 (defcustom zeal-at-point-mode-alist
   `((actionscript-mode . "actionscript")
@@ -165,11 +173,12 @@ the combined docset.")
               search-string))))
 
 (defun zeal-at-point-run-search (search)
-  (if (executable-find "zeal")
-      (if (version< "0.2.0" zeal-at-point-zeal-version)
-          (start-process "Zeal" nil "zeal" search)
-        (start-process "Zeal" nil "zeal" "--query" search))
-    (message "Zeal is not found. Please install it from http://zealdocs.org")))
+  (let ((zeal (zeal-find-executable)))
+    (if zeal
+	(if (version< "0.2.0" zeal-at-point-zeal-version)
+            (start-process "Zeal" nil zeal search)
+          (start-process "Zeal" nil zeal "--query" search))
+      (message "Zeal is not found. Please install it from http://zealdocs.org"))))
 
 ;;;###autoload
 (defun zeal-at-point (&optional edit-search)
